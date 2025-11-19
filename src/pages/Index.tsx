@@ -612,6 +612,8 @@ const Index = () => {
   const [isInspectionDialogOpen, setIsInspectionDialogOpen] = useState(false);
   const [selectedDepartmentForCalc, setSelectedDepartmentForCalc] = useState<string>('all');
   const [recommendations, setRecommendations] = useState<string>('Рекомендуется соблюдать здоровый образ жизни, регулярные физические нагрузки, сбалансированное питание.');
+  const [selectedReport, setSelectedReport] = useState<string | null>(null);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -2124,66 +2126,459 @@ const Index = () => {
 
           <TabsContent value="analytics">
             <div className="space-y-6">
-              <div className="grid md:grid-cols-3 gap-4">
+              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50">
+                <CardHeader>
+                  <CardTitle className="text-2xl">Паспорт здоровья предприятия</CardTitle>
+                  <CardDescription>Общие показатели за 2024 год</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-4 gap-4">
+                    <div className="bg-white p-4 rounded-lg shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-slate-600">Всего сотрудников</span>
+                        <Icon name="Users" size={20} className="text-blue-500" />
+                      </div>
+                      <p className="text-3xl font-bold text-blue-600">{employees.length}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-slate-600">Средний возраст</span>
+                        <Icon name="Calendar" size={20} className="text-purple-500" />
+                      </div>
+                      <p className="text-3xl font-bold text-purple-600">
+                        {Math.round(employees.reduce((sum, e) => sum + e.age, 0) / employees.length)} лет
+                      </p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-slate-600">Средний ИМТ</span>
+                        <Icon name="Activity" size={20} className="text-green-500" />
+                      </div>
+                      <p className="text-3xl font-bold text-green-600">
+                        {(employees.filter(e => e.bmi).reduce((sum, e) => sum + (e.bmi || 0), 0) / employees.filter(e => e.bmi).length).toFixed(1)}
+                      </p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-slate-600">Допущено к работе</span>
+                        <Icon name="CheckCircle" size={20} className="text-yellow-500" />
+                      </div>
+                      <p className="text-3xl font-bold text-yellow-600">
+                        {Math.round((employees.filter(e => e.status === 'Допущен').length / employees.length) * 100)}%
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="grid md:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Средний возраст</CardTitle>
+                    <CardTitle>Распределение по группам здоровья</CardTitle>
+                    <CardDescription>Актуальные данные</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-3xl font-bold text-blue-600">
-                      {Math.round(employees.reduce((sum, e) => sum + e.age, 0) / employees.length)} лет
-                    </p>
+                    <div className="space-y-4">
+                      {[1, 2, 3].map(group => {
+                        const count = employees.filter(e => e.healthGroup === group).length;
+                        const percentage = (count / employees.length) * 100;
+                        const color = group === 1 ? 'bg-green-500' : group === 2 ? 'bg-yellow-500' : 'bg-red-500';
+                        return (
+                          <div key={group}>
+                            <div className="flex justify-between mb-2">
+                              <span className="text-sm font-medium">Группа {group}</span>
+                              <span className="text-sm text-slate-600">{count} чел ({percentage.toFixed(0)}%)</span>
+                            </div>
+                            <div className="w-full bg-slate-200 rounded-full h-3">
+                              <div className={`${color} h-3 rounded-full transition-all`} style={{width: `${percentage}%`}}></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                      <h5 className="font-semibold text-blue-900 mb-2">Интерпретация</h5>
+                      <div className="text-sm text-blue-800 space-y-1">
+                        <p>• Группа I — практически здоровые</p>
+                        <p>• Группа II — с функциональными нарушениями</p>
+                        <p>• Группа III — с хроническими заболеваниями</p>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Средний ИМТ</CardTitle>
+                    <CardTitle>Индекс здоровья по отделам</CardTitle>
+                    <CardDescription>Процент здоровых работников</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-3xl font-bold text-green-600">
-                      {(employees.filter(e => e.bmi).reduce((sum, e) => sum + (e.bmi || 0), 0) / employees.filter(e => e.bmi).length).toFixed(1)}
-                    </p>
-                  </CardContent>
-                </Card>
+                    <div className="space-y-4">
+                      {departments.map(dept => {
+                        const deptEmployees = employees.filter(e => e.department === dept);
+                        const healthyCount = deptEmployees.filter(e => e.healthGroup === 1).length;
+                        const healthIndex = (healthyCount / deptEmployees.length) * 100;
+                        
+                        return (
+                          <div key={dept} className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium truncate max-w-[200px]">{dept}</span>
+                              <span className={`text-sm font-bold ${healthIndex >= 70 ? 'text-green-600' : healthIndex >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                {healthIndex.toFixed(0)}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-slate-200 rounded-full h-2">
+                              <div 
+                                className={`h-2 rounded-full transition-all ${healthIndex >= 70 ? 'bg-green-500' : healthIndex >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                style={{width: `${healthIndex}%`}}
+                              ></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Процент допущенных</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-3xl font-bold text-yellow-600">
-                      {Math.round((employees.filter(e => e.status === 'Допущен').length / employees.length) * 100)}%
-                    </p>
+                    <div className="mt-6 p-4 bg-slate-50 rounded-lg">
+                      <h5 className="font-semibold mb-2">Средний индекс</h5>
+                      <p className="text-3xl font-bold text-blue-600">
+                        {Math.round((employees.filter(e => e.healthGroup === 1).length / employees.length) * 100)}%
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Отчеты и документы</CardTitle>
-                  <CardDescription>Сформированные отчеты за период</CardDescription>
+                  <CardTitle>Выполнение профилактических мероприятий</CardTitle>
+                  <CardDescription>План на 2024 год</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <Button variant="outline" className="w-full justify-start h-auto py-3">
-                      <Icon name="FileText" className="mr-2" size={18} />
-                      <div className="text-left">
-                        <p className="font-medium">Отчет по профосмотрам</p>
-                        <p className="text-xs text-slate-500">IV квартал 2024</p>
+                  <div className="space-y-4">
+                    {[
+                      { name: 'Периодические медосмотры', planned: 20, completed: 20, unit: 'чел' },
+                      { name: 'Вакцинация от гриппа', planned: 15, completed: 12, unit: 'чел' },
+                      { name: 'Лекции по ЗОЖ', planned: 4, completed: 3, unit: 'шт' },
+                      { name: 'Диспансеризация', planned: 20, completed: 18, unit: 'чел' },
+                      { name: 'Контроль АД (группа риска)', planned: 10, completed: 10, unit: 'чел' },
+                      { name: 'Психологические консультации', planned: 8, completed: 5, unit: 'чел' }
+                    ].map((item, idx) => {
+                      const percentage = (item.completed / item.planned) * 100;
+                      return (
+                        <div key={idx} className="p-4 bg-slate-50 rounded-lg">
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex-1">
+                              <h5 className="font-semibold mb-1">{item.name}</h5>
+                              <p className="text-sm text-slate-600">
+                                Выполнено: {item.completed} из {item.planned} {item.unit}
+                              </p>
+                            </div>
+                            <Badge className={percentage >= 100 ? 'bg-green-100 text-green-800' : percentage >= 75 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}>
+                              {percentage.toFixed(0)}%
+                            </Badge>
+                          </div>
+                          <div className="w-full bg-slate-200 rounded-full h-3">
+                            <div 
+                              className={`h-3 rounded-full transition-all ${percentage >= 100 ? 'bg-green-500' : percentage >= 75 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                              style={{width: `${Math.min(percentage, 100)}%`}}
+                            ></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-6 p-4 bg-green-50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h5 className="font-semibold text-green-900 mb-1">Общий прогресс</h5>
+                        <p className="text-sm text-green-700">Среднее выполнение плановых мероприятий</p>
                       </div>
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start h-auto py-3">
-                      <Icon name="FileText" className="mr-2" size={18} />
-                      <div className="text-left">
-                        <p className="font-medium">Анализ заболеваемости</p>
-                        <p className="text-xs text-slate-500">По подразделениям</p>
+                      <p className="text-4xl font-bold text-green-600">85%</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Отчеты и документы</CardTitle>
+                  <CardDescription>Доступные отчеты по различным направлениям</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {[
+                      { id: 'inspections', title: 'Отчет по профосмотрам', subtitle: 'IV квартал 2024', icon: 'FileText', color: 'blue' },
+                      { id: 'healthgroups', title: 'Анализ групп здоровья', subtitle: 'Динамика за год', icon: 'Heart', color: 'green' },
+                      { id: 'prevention', title: 'Профилактические мероприятия', subtitle: 'План-факт анализ', icon: 'Activity', color: 'purple' },
+                      { id: 'diseases', title: 'Заболеваемость', subtitle: 'По подразделениям', icon: 'AlertCircle', color: 'red' },
+                      { id: 'risks', title: 'Факторы риска', subtitle: 'Оценка ССЗ', icon: 'TrendingUp', color: 'orange' },
+                      { id: 'summary', title: 'Сводный отчет', subtitle: 'Паспорт здоровья', icon: 'FileCheck', color: 'indigo' }
+                    ].map(report => (
+                      <Button 
+                        key={report.id}
+                        variant="outline" 
+                        className="w-full justify-start h-auto py-4 hover:border-blue-500 hover:bg-blue-50"
+                        onClick={() => {
+                          setSelectedReport(report.id);
+                          setIsReportDialogOpen(true);
+                        }}
+                      >
+                        <div className={
+                          report.color === 'blue' ? 'w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center mr-3' :
+                          report.color === 'green' ? 'w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center mr-3' :
+                          report.color === 'purple' ? 'w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center mr-3' :
+                          report.color === 'red' ? 'w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center mr-3' :
+                          report.color === 'orange' ? 'w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center mr-3' :
+                          'w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center mr-3'
+                        }>
+                          <Icon 
+                            name={report.icon as any} 
+                            className={
+                              report.color === 'blue' ? 'text-blue-600' :
+                              report.color === 'green' ? 'text-green-600' :
+                              report.color === 'purple' ? 'text-purple-600' :
+                              report.color === 'red' ? 'text-red-600' :
+                              report.color === 'orange' ? 'text-orange-600' :
+                              'text-indigo-600'
+                            }
+                            size={20} 
+                          />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-medium">{report.title}</p>
+                          <p className="text-xs text-slate-500">{report.subtitle}</p>
+                        </div>
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Показатели здоровья в динамике</CardTitle>
+                  <CardDescription>Изменение за последние 6 месяцев</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <h5 className="font-semibold flex items-center gap-2">
+                        <Icon name="TrendingDown" size={18} className="text-green-600" />
+                        Положительная динамика
+                      </h5>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between p-3 bg-green-50 rounded-lg">
+                          <span>Группа здоровья I</span>
+                          <span className="font-semibold text-green-600">+5%</span>
+                        </div>
+                        <div className="flex justify-between p-3 bg-green-50 rounded-lg">
+                          <span>Средний ИМТ</span>
+                          <span className="font-semibold text-green-600">-0.3</span>
+                        </div>
+                        <div className="flex justify-between p-3 bg-green-50 rounded-lg">
+                          <span>Нормальное АД</span>
+                          <span className="font-semibold text-green-600">+8%</span>
+                        </div>
                       </div>
-                    </Button>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h5 className="font-semibold flex items-center gap-2">
+                        <Icon name="TrendingUp" size={18} className="text-red-600" />
+                        Требует внимания
+                      </h5>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between p-3 bg-red-50 rounded-lg">
+                          <span>Повышенный холестерин</span>
+                          <span className="font-semibold text-red-600">+2 чел</span>
+                        </div>
+                        <div className="flex justify-between p-3 bg-yellow-50 rounded-lg">
+                          <span>Пропуски осмотров</span>
+                          <span className="font-semibold text-yellow-600">3 чел</span>
+                        </div>
+                        <div className="flex justify-between p-3 bg-orange-50 rounded-lg">
+                          <span>Отказы от вакцинации</span>
+                          <span className="font-semibold text-orange-600">3 чел</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+            <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>
+                    {selectedReport === 'inspections' && 'Отчет по профессиональным осмотрам'}
+                    {selectedReport === 'healthgroups' && 'Анализ распределения по группам здоровья'}
+                    {selectedReport === 'prevention' && 'Отчет по профилактическим мероприятиям'}
+                    {selectedReport === 'diseases' && 'Анализ заболеваемости'}
+                    {selectedReport === 'risks' && 'Оценка факторов риска ССЗ'}
+                    {selectedReport === 'summary' && 'Сводный отчет - Паспорт здоровья'}
+                  </DialogTitle>
+                  <DialogDescription>За период: IV квартал 2024 года</DialogDescription>
+                </DialogHeader>
+
+                {selectedReport === 'inspections' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <Card>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-slate-600 mb-1">Всего осмотров</p>
+                          <p className="text-2xl font-bold text-blue-600">{employees.length}</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-slate-600 mb-1">Периодических</p>
+                          <p className="text-2xl font-bold text-green-600">{employees.length}</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-slate-600 mb-1">Предварительных</p>
+                          <p className="text-2xl font-bold text-purple-600">3</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Распределение по статусам допуска</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">Допущены без ограничений</span>
+                            <span className="font-bold text-green-600">{employees.filter(e => e.status === 'Допущен').length} чел</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">Допущены с ограничениями</span>
+                            <span className="font-bold text-yellow-600">{employees.filter(e => e.status.includes('ограничениями')).length} чел</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">Направлены на доп. обследование</span>
+                            <span className="font-bold text-red-600">{employees.filter(e => e.status.includes('обследование')).length} чел</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <div className="flex gap-2">
+                      <Button className="flex-1">
+                        <Icon name="Download" size={16} className="mr-2" />
+                        Скачать PDF
+                      </Button>
+                      <Button variant="outline" className="flex-1">
+                        <Icon name="FileText" size={16} className="mr-2" />
+                        Экспорт в Excel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {selectedReport === 'healthgroups' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      {[1, 2, 3].map(group => {
+                        const count = employees.filter(e => e.healthGroup === group).length;
+                        return (
+                          <Card key={group}>
+                            <CardContent className="p-4">
+                              <p className="text-sm text-slate-600 mb-1">Группа {group}</p>
+                              <p className="text-2xl font-bold">{count} чел</p>
+                              <p className="text-xs text-slate-500 mt-1">{((count / employees.length) * 100).toFixed(0)}% от общего числа</p>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Динамика за 6 месяцев</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {['Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь'].map((month, idx) => {
+                            const values = [
+                              { g1: 55, g2: 30, g3: 15 },
+                              { g1: 57, g2: 29, g3: 14 },
+                              { g1: 58, g2: 28, g3: 14 },
+                              { g1: 59, g2: 28, g3: 13 },
+                              { g1: 60, g2: 28, g3: 12 },
+                              { g1: 60, g2: 30, g3: 10 }
+                            ];
+                            return (
+                              <div key={month} className="flex items-center gap-3">
+                                <span className="text-sm w-20">{month}</span>
+                                <div className="flex-1 flex h-8 rounded overflow-hidden">
+                                  <div className="bg-green-500 flex items-center justify-center text-xs text-white font-semibold" style={{width: `${values[idx].g1}%`}}>
+                                    {values[idx].g1}%
+                                  </div>
+                                  <div className="bg-yellow-500 flex items-center justify-center text-xs text-white font-semibold" style={{width: `${values[idx].g2}%`}}>
+                                    {values[idx].g2}%
+                                  </div>
+                                  <div className="bg-red-500 flex items-center justify-center text-xs text-white font-semibold" style={{width: `${values[idx].g3}%`}}>
+                                    {values[idx].g3}%
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <div className="flex gap-2">
+                      <Button className="flex-1">
+                        <Icon name="Download" size={16} className="mr-2" />
+                        Скачать отчет
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {selectedReport === 'prevention' && (
+                  <div className="space-y-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">План-факт выполнения мероприятий</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {[
+                            { name: 'Периодические осмотры', plan: 20, fact: 20 },
+                            { name: 'Вакцинация', plan: 15, fact: 12 },
+                            { name: 'Диспансеризация', plan: 20, fact: 18 },
+                            { name: 'Лекции по ЗОЖ', plan: 4, fact: 3 }
+                          ].map(item => (
+                            <div key={item.name} className="p-3 bg-slate-50 rounded">
+                              <div className="flex justify-between mb-2">
+                                <span className="font-medium">{item.name}</span>
+                                <span className="text-sm text-slate-600">{item.fact}/{item.plan}</span>
+                              </div>
+                              <Progress value={(item.fact / item.plan) * 100} className="h-2" />
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <div className="flex gap-2">
+                      <Button className="flex-1">
+                        <Icon name="Download" size={16} className="mr-2" />
+                        Скачать отчет
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         </Tabs>
       </main>

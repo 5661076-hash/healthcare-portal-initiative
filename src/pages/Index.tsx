@@ -614,6 +614,49 @@ const Index = () => {
   const [recommendations, setRecommendations] = useState<string>('Рекомендуется соблюдать здоровый образ жизни, регулярные физические нагрузки, сбалансированное питание.');
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  
+  const [findriscData, setFindriscData] = useState({
+    age: '',
+    bmi: '',
+    waist: '',
+    activity: '',
+    vegetables: '',
+    medication: '',
+    glucose: '',
+    relatives: ''
+  });
+  const [findriscResult, setFindriscResult] = useState<number | null>(null);
+  
+  const calculateFindrisc = () => {
+    let score = 0;
+    
+    if (findriscData.age === '45-54') score += 2;
+    else if (findriscData.age === '55-64') score += 3;
+    else if (findriscData.age === '>64') score += 4;
+    
+    if (findriscData.bmi === '25-30') score += 1;
+    else if (findriscData.bmi === '>30') score += 3;
+    
+    if (findriscData.waist === 'm-94-102' || findriscData.waist === 'f-80-88') score += 3;
+    else if (findriscData.waist === 'm->102' || findriscData.waist === 'f->88') score += 4;
+    
+    if (findriscData.activity === 'no') score += 2;
+    if (findriscData.vegetables === 'no') score += 1;
+    if (findriscData.medication === 'yes') score += 2;
+    if (findriscData.glucose === 'yes') score += 5;
+    if (findriscData.relatives === 'yes-distant') score += 3;
+    else if (findriscData.relatives === 'yes-close') score += 5;
+    
+    setFindriscResult(score);
+  };
+  
+  const getFindriscRisk = (score: number) => {
+    if (score < 7) return { level: 'Низкий', percent: '1%', color: 'green' };
+    if (score < 12) return { level: 'Незначительно повышенный', percent: '4%', color: 'yellow' };
+    if (score < 15) return { level: 'Умеренный', percent: '17%', color: 'orange' };
+    if (score < 20) return { level: 'Высокий', percent: '33%', color: 'red' };
+    return { level: 'Очень высокий', percent: '50%', color: 'red' };
+  };
 
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1564,9 +1607,12 @@ const Index = () => {
                         <div className="space-y-4 border-t pt-4">
                           <div className="space-y-2">
                             <Label>1. Возраст</Label>
-                            <Select defaultValue="35-44">
+                            <Select 
+                              value={findriscData.age}
+                              onValueChange={(value) => setFindriscData({...findriscData, age: value})}
+                            >
                               <SelectTrigger>
-                                <SelectValue />
+                                <SelectValue placeholder="Выберите" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="<45">Менее 45 лет (0 баллов)</SelectItem>
@@ -1579,9 +1625,12 @@ const Index = () => {
 
                           <div className="space-y-2">
                             <Label>2. Индекс массы тела (ИМТ)</Label>
-                            <Select defaultValue="25-30">
+                            <Select 
+                              value={findriscData.bmi}
+                              onValueChange={(value) => setFindriscData({...findriscData, bmi: value})}
+                            >
                               <SelectTrigger>
-                                <SelectValue />
+                                <SelectValue placeholder="Выберите" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="<25">Менее 25 кг/м² (0 баллов)</SelectItem>
@@ -1593,7 +1642,10 @@ const Index = () => {
 
                           <div className="space-y-2">
                             <Label>3. Окружность талии</Label>
-                            <Select>
+                            <Select 
+                              value={findriscData.waist}
+                              onValueChange={(value) => setFindriscData({...findriscData, waist: value})}
+                            >
                               <SelectTrigger>
                                 <SelectValue placeholder="Выберите" />
                               </SelectTrigger>
@@ -1610,7 +1662,10 @@ const Index = () => {
 
                           <div className="space-y-2">
                             <Label>4. Физическая активность (30 мин/день)</Label>
-                            <Select>
+                            <Select 
+                              value={findriscData.activity}
+                              onValueChange={(value) => setFindriscData({...findriscData, activity: value})}
+                            >
                               <SelectTrigger>
                                 <SelectValue placeholder="Выберите" />
                               </SelectTrigger>
@@ -1623,7 +1678,10 @@ const Index = () => {
 
                           <div className="space-y-2">
                             <Label>5. Употребление овощей и фруктов</Label>
-                            <Select>
+                            <Select 
+                              value={findriscData.vegetables}
+                              onValueChange={(value) => setFindriscData({...findriscData, vegetables: value})}
+                            >
                               <SelectTrigger>
                                 <SelectValue placeholder="Выберите" />
                               </SelectTrigger>
@@ -1634,19 +1692,99 @@ const Index = () => {
                             </Select>
                           </div>
 
-                          <Button className="w-full">Рассчитать риск</Button>
-
-                          <div className="bg-green-50 p-4 rounded-lg mt-4">
-                            <h4 className="font-semibold text-green-900 mb-2">Результат: Низкий риск</h4>
-                            <p className="text-sm text-green-800 mb-3">
-                              Сумма баллов: 5
-                              <br />
-                              Риск развития диабета: 1% (1 из 100)
-                            </p>
-                            <p className="text-xs text-green-700">
-                              Рекомендация: Поддерживайте здоровый образ жизни
-                            </p>
+                          <div className="space-y-2">
+                            <Label>6. Прием гипотензивных препаратов</Label>
+                            <Select 
+                              value={findriscData.medication}
+                              onValueChange={(value) => setFindriscData({...findriscData, medication: value})}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Выберите" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="no">Нет (0 баллов)</SelectItem>
+                                <SelectItem value="yes">Да (2 балла)</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
+
+                          <div className="space-y-2">
+                            <Label>7. Повышенный уровень глюкозы в анамнезе</Label>
+                            <Select 
+                              value={findriscData.glucose}
+                              onValueChange={(value) => setFindriscData({...findriscData, glucose: value})}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Выберите" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="no">Нет (0 баллов)</SelectItem>
+                                <SelectItem value="yes">Да (5 баллов)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>8. Родственники с диабетом</Label>
+                            <Select 
+                              value={findriscData.relatives}
+                              onValueChange={(value) => setFindriscData({...findriscData, relatives: value})}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Выберите" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="no">Нет (0 баллов)</SelectItem>
+                                <SelectItem value="yes-distant">Дальние родственники (3 балла)</SelectItem>
+                                <SelectItem value="yes-close">Близкие родственники (5 баллов)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <Button 
+                            className="w-full" 
+                            onClick={calculateFindrisc}
+                          >
+                            Рассчитать риск
+                          </Button>
+
+                          {findriscResult !== null && (() => {
+                            const risk = getFindriscRisk(findriscResult);
+                            return (
+                              <div className={`p-4 rounded-lg mt-4 ${
+                                risk.color === 'green' ? 'bg-green-50' :
+                                risk.color === 'yellow' ? 'bg-yellow-50' :
+                                risk.color === 'orange' ? 'bg-orange-50' : 'bg-red-50'
+                              }`}>
+                                <h4 className={`font-semibold mb-2 ${
+                                  risk.color === 'green' ? 'text-green-900' :
+                                  risk.color === 'yellow' ? 'text-yellow-900' :
+                                  risk.color === 'orange' ? 'text-orange-900' : 'text-red-900'
+                                }`}>
+                                  Результат: {risk.level}
+                                </h4>
+                                <p className={`text-sm mb-3 ${
+                                  risk.color === 'green' ? 'text-green-800' :
+                                  risk.color === 'yellow' ? 'text-yellow-800' :
+                                  risk.color === 'orange' ? 'text-orange-800' : 'text-red-800'
+                                }`}>
+                                  Сумма баллов: {findriscResult}
+                                  <br />
+                                  Риск развития диабета: {risk.percent} в течение 10 лет
+                                </p>
+                                <p className={`text-xs ${
+                                  risk.color === 'green' ? 'text-green-700' :
+                                  risk.color === 'yellow' ? 'text-yellow-700' :
+                                  risk.color === 'orange' ? 'text-orange-700' : 'text-red-700'
+                                }`}>
+                                  {findriscResult < 7 && 'Рекомендация: Поддерживайте здоровый образ жизни'}
+                                  {findriscResult >= 7 && findriscResult < 12 && 'Рекомендация: Контроль массы тела и физическая активность'}
+                                  {findriscResult >= 12 && findriscResult < 15 && 'Рекомендация: Консультация эндокринолога, контроль глюкозы'}
+                                  {findriscResult >= 15 && 'Рекомендация: Срочная консультация эндокринолога, определение глюкозы крови'}
+                                </p>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </TabsContent>

@@ -607,6 +607,9 @@ const Index = () => {
   const [selectedCalculatorEmployee, setSelectedCalculatorEmployee] = useState<number | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>(mockAppointments);
   const [selectedDate, setSelectedDate] = useState('2024-11-18');
+  const [inspectionType, setInspectionType] = useState<'preliminary' | 'periodic' | 'indepth'>('periodic');
+  const [selectedInspectionEmployee, setSelectedInspectionEmployee] = useState<number | null>(null);
+  const [isInspectionDialogOpen, setIsInspectionDialogOpen] = useState(false);
 
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1168,148 +1171,343 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="inspections">
-            <div className="grid gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Календарь осмотров</CardTitle>
-                  <CardDescription>Планирование и учет медицинских осмотров</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <Input
-                        type="date"
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        className="w-[200px]"
-                      />
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button>
-                            <Icon name="Plus" size={16} className="mr-2" />
-                            Запланировать осмотр
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Новый осмотр</DialogTitle>
-                            <DialogDescription>Запланируйте медицинский осмотр</DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <Label>Сотрудник</Label>
-                              <Select>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Выберите сотрудника" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {employees.map(emp => (
-                                    <SelectItem key={emp.id} value={emp.id.toString()}>
-                                      {emp.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label>Дата</Label>
-                                <Input type="date" />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Время</Label>
-                                <Input type="time" />
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Тип осмотра</Label>
-                              <Select>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Выберите тип" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="periodic">Периодический</SelectItem>
-                                  <SelectItem value="preliminary">Предварительный</SelectItem>
-                                  <SelectItem value="additional">Дополнительный</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Специалист</Label>
-                              <Select>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Выберите врача" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="therapist">Терапевт</SelectItem>
-                                  <SelectItem value="cardiologist">Кардиолог</SelectItem>
-                                  <SelectItem value="neurologist">Невролог</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <Button className="w-full">Запланировать</Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
+            <Tabs value={inspectionType} onValueChange={(value) => setInspectionType(value as 'preliminary' | 'periodic' | 'indepth')} className="space-y-4">
+              <div className="flex justify-between items-center">
+                <TabsList>
+                  <TabsTrigger value="preliminary">Предварительные</TabsTrigger>
+                  <TabsTrigger value="periodic">Периодические</TabsTrigger>
+                  <TabsTrigger value="indepth">Углубленные</TabsTrigger>
+                </TabsList>
+                <Button onClick={() => setIsInspectionDialogOpen(true)}>
+                  <Icon name="Plus" size={16} className="mr-2" />
+                  Создать осмотр
+                </Button>
+              </div>
 
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Время</TableHead>
-                            <TableHead>Сотрудник</TableHead>
-                            <TableHead>Тип осмотра</TableHead>
-                            <TableHead>Специалист</TableHead>
-                            <TableHead>Статус</TableHead>
-                            <TableHead>Действия</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredAppointments.map((appointment) => (
-                            <TableRow key={appointment.id}>
-                              <TableCell className="font-medium">{appointment.time}</TableCell>
-                              <TableCell>
-                                <Button
-                                  variant="link"
-                                  className="p-0 h-auto font-medium"
+              <TabsContent value="preliminary" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Предварительные осмотры</CardTitle>
+                    <CardDescription>При поступлении на работу и при переводе на другую работу</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {employees.filter(e => e.lastExam && new Date(e.lastExam) > new Date('2024-09-01')).slice(0, 3).map(emp => (
+                        <Card key={emp.id} className="border-l-4 border-l-blue-500">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <h5 className="font-semibold mb-2">{emp.name}</h5>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  <p className="text-slate-600">Должность: {emp.position}</p>
+                                  <p className="text-slate-600">Подразделение: {emp.department}</p>
+                                  <p className="text-slate-600">Дата осмотра: {emp.lastExam}</p>
+                                  <p className="text-slate-600">Возраст: {emp.age} лет</p>
+                                </div>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                onClick={() => {
+                                  setSelectedInspectionEmployee(emp.id);
+                                  setSelectedEmployee(emp);
+                                  setIsMedicalCardDialogOpen(true);
+                                }}
+                              >
+                                Открыть
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="periodic" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Периодические осмотры</CardTitle>
+                    <CardDescription>Регулярные осмотры работников в течение трудовой деятельности</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {employees.map(emp => (
+                        <Card key={emp.id} className="border-l-4 border-l-green-500">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start gap-4">
+                              <div className="flex-1 grid grid-cols-3 gap-4">
+                                <div>
+                                  <h5 className="font-semibold mb-1">{emp.name}</h5>
+                                  <p className="text-sm text-slate-600">{emp.position}</p>
+                                  <Badge className={`mt-2 ${getHealthGroupColor(emp.healthGroup)}`}>
+                                    Группа {emp.healthGroup}
+                                  </Badge>
+                                </div>
+                                <div className="space-y-1 text-sm">
+                                  <p className="text-slate-600"><strong>Последний:</strong> {emp.lastExam}</p>
+                                  <p className="text-slate-600"><strong>Следующий:</strong> {emp.nextExam}</p>
+                                  <p className="text-slate-600"><strong>Возраст:</strong> {emp.age} лет</p>
+                                </div>
+                                <div className="space-y-1 text-sm">
+                                  <p><strong>ИМТ:</strong> {emp.bmi || 'Н/Д'}</p>
+                                  <p><strong>АД:</strong> {emp.bloodPressure || 'Н/Д'}</p>
+                                  <p><strong>Глюкоза:</strong> {emp.glucose ? `${emp.glucose} ммоль/л` : 'Н/Д'}</p>
+                                </div>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                onClick={() => {
+                                  setSelectedInspectionEmployee(emp.id);
+                                  setSelectedEmployee(emp);
+                                  setIsMedicalCardDialogOpen(true);
+                                }}
+                              >
+                                Осмотр
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="indepth" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Углубленные осмотры</CardTitle>
+                    <CardDescription>Для работников с факторами риска и хроническими заболеваниями</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {employees.filter(e => e.healthGroup >= 2).map(emp => (
+                        <Card key={emp.id} className="border-l-4 border-l-orange-500">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-3">
+                                  <h5 className="font-semibold">{emp.name}</h5>
+                                  <Badge className={getHealthGroupColor(emp.healthGroup)}>
+                                    Группа {emp.healthGroup}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-orange-600">
+                                    Требует углубленного осмотра
+                                  </Badge>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                  <div className="space-y-2 text-sm">
+                                    <p className="text-slate-600"><strong>Должность:</strong> {emp.position}</p>
+                                    <p className="text-slate-600"><strong>Подразделение:</strong> {emp.department}</p>
+                                    <p className="text-slate-600"><strong>Последний осмотр:</strong> {emp.lastExam}</p>
+                                  </div>
+                                  <div className="space-y-2 text-sm">
+                                    <p><strong>ИМТ:</strong> <span className={emp.bmi && emp.bmi > 27 ? 'text-red-600 font-semibold' : ''}>{emp.bmi || 'Н/Д'}</span></p>
+                                    <p><strong>АД:</strong> {emp.bloodPressure || 'Н/Д'}</p>
+                                    <p><strong>Глюкоза:</strong> <span className={emp.glucose && emp.glucose > 6.0 ? 'text-red-600 font-semibold' : ''}>{emp.glucose ? `${emp.glucose} ммоль/л` : 'Н/Д'}</span></p>
+                                    <p><strong>Холестерин:</strong> <span className={emp.cholesterol && emp.cholesterol > 5.5 ? 'text-red-600 font-semibold' : ''}>{emp.cholesterol ? `${emp.cholesterol} ммоль/л` : 'Н/Д'}</span></p>
+                                  </div>
+                                </div>
+
+                                {emp.contraindications && emp.contraindications.length > 0 && (
+                                  <div className="bg-orange-50 p-3 rounded-lg mb-3">
+                                    <p className="text-sm font-medium text-orange-900 mb-1">Противопоказания:</p>
+                                    <ul className="text-sm text-orange-800 list-disc list-inside">
+                                      {emp.contraindications.map((item, idx) => (
+                                        <li key={idx}>{item}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+
+                                {emp.metricsHistory && emp.metricsHistory.length >= 2 && (
+                                  <div className="grid grid-cols-4 gap-2 text-sm">
+                                    <div className="bg-slate-50 p-2 rounded">
+                                      <p className="text-xs text-slate-600 mb-1">Динамика ИМТ</p>
+                                      {emp.metricsHistory[emp.metricsHistory.length - 1].bmi && emp.metricsHistory[emp.metricsHistory.length - 2].bmi && (
+                                        <p className={`font-semibold ${
+                                          emp.metricsHistory[emp.metricsHistory.length - 1].bmi! < emp.metricsHistory[emp.metricsHistory.length - 2].bmi! 
+                                            ? 'text-green-600' 
+                                            : 'text-red-600'
+                                        }`}>
+                                          {emp.metricsHistory[emp.metricsHistory.length - 1].bmi! < emp.metricsHistory[emp.metricsHistory.length - 2].bmi! ? '↓' : '↑'} 
+                                          {Math.abs(emp.metricsHistory[emp.metricsHistory.length - 1].bmi! - emp.metricsHistory[emp.metricsHistory.length - 2].bmi!).toFixed(1)}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="bg-slate-50 p-2 rounded">
+                                      <p className="text-xs text-slate-600 mb-1">Динамика глюкозы</p>
+                                      {emp.metricsHistory[emp.metricsHistory.length - 1].glucose && emp.metricsHistory[emp.metricsHistory.length - 2].glucose && (
+                                        <p className={`font-semibold ${
+                                          emp.metricsHistory[emp.metricsHistory.length - 1].glucose! < emp.metricsHistory[emp.metricsHistory.length - 2].glucose! 
+                                            ? 'text-green-600' 
+                                            : 'text-red-600'
+                                        }`}>
+                                          {emp.metricsHistory[emp.metricsHistory.length - 1].glucose! < emp.metricsHistory[emp.metricsHistory.length - 2].glucose! ? '↓' : '↑'} 
+                                          {Math.abs(emp.metricsHistory[emp.metricsHistory.length - 1].glucose! - emp.metricsHistory[emp.metricsHistory.length - 2].glucose!).toFixed(1)}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="bg-slate-50 p-2 rounded">
+                                      <p className="text-xs text-slate-600 mb-1">Динамика холестерина</p>
+                                      {emp.metricsHistory[emp.metricsHistory.length - 1].cholesterol && emp.metricsHistory[emp.metricsHistory.length - 2].cholesterol && (
+                                        <p className={`font-semibold ${
+                                          emp.metricsHistory[emp.metricsHistory.length - 1].cholesterol! < emp.metricsHistory[emp.metricsHistory.length - 2].cholesterol! 
+                                            ? 'text-green-600' 
+                                            : 'text-red-600'
+                                        }`}>
+                                          {emp.metricsHistory[emp.metricsHistory.length - 1].cholesterol! < emp.metricsHistory[emp.metricsHistory.length - 2].cholesterol! ? '↓' : '↑'} 
+                                          {Math.abs(emp.metricsHistory[emp.metricsHistory.length - 1].cholesterol! - emp.metricsHistory[emp.metricsHistory.length - 2].cholesterol!).toFixed(1)}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="bg-slate-50 p-2 rounded">
+                                      <p className="text-xs text-slate-600 mb-1">Измерений</p>
+                                      <p className="font-semibold">{emp.metricsHistory.length}</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                <Button 
+                                  size="sm"
                                   onClick={() => {
-                                    const emp = employees.find(e => e.id === appointment.employeeId);
-                                    if (emp) {
-                                      setSelectedEmployee(emp);
-                                      setIsMedicalCardDialogOpen(true);
-                                    }
+                                    setSelectedInspectionEmployee(emp.id);
+                                    setSelectedEmployee(emp);
+                                    setIsMedicalCardDialogOpen(true);
                                   }}
                                 >
-                                  {appointment.employeeName}
+                                  <Icon name="Eye" size={14} className="mr-1" />
+                                  Карта
                                 </Button>
-                              </TableCell>
-                              <TableCell>{appointment.type}</TableCell>
-                              <TableCell>{appointment.doctor}</TableCell>
-                              <TableCell>
-                                <Badge className={getAppointmentStatusColor(appointment.status)}>
-                                  {appointment.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex gap-2">
-                                  <Button variant="ghost" size="sm">
-                                    <Icon name="Edit" size={16} />
-                                  </Button>
-                                  <Button variant="ghost" size="sm">
-                                    <Icon name="Trash2" size={16} />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedInspectionEmployee(emp.id);
+                                  }}
+                                >
+                                  <Icon name="FileText" size={14} className="mr-1" />
+                                  План
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+
+            <Dialog open={isInspectionDialogOpen} onOpenChange={setIsInspectionDialogOpen}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Создать осмотр</DialogTitle>
+                  <DialogDescription>Выберите сотрудника и заполните данные осмотра</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Выберите сотрудника</Label>
+                    <Select 
+                      value={selectedInspectionEmployee?.toString() || ''} 
+                      onValueChange={(value) => setSelectedInspectionEmployee(parseInt(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите сотрудника" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees.map(emp => (
+                          <SelectItem key={emp.id} value={emp.id.toString()}>
+                            {emp.name} - {emp.department}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+
+                  {selectedInspectionEmployee && (() => {
+                    const emp = employees.find(e => e.id === selectedInspectionEmployee);
+                    return emp ? (
+                      <div className="space-y-4 border-t pt-4">
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <h5 className="font-semibold mb-2">Данные из медицинской карты</h5>
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <p><strong>ФИО:</strong> {emp.name}</p>
+                            <p><strong>Возраст:</strong> {emp.age} лет</p>
+                            <p><strong>Должность:</strong> {emp.position}</p>
+                            <p><strong>Подразделение:</strong> {emp.department}</p>
+                            <p><strong>Группа здоровья:</strong> {emp.healthGroup}</p>
+                            <p><strong>Последний осмотр:</strong> {emp.lastExam}</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-50 p-4 rounded-lg">
+                          <h5 className="font-semibold mb-2">Текущие показатели</h5>
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <p><strong>ИМТ:</strong> {emp.bmi || 'Н/Д'}</p>
+                            <p><strong>АД:</strong> {emp.bloodPressure || 'Н/Д'}</p>
+                            <p><strong>Глюкоза:</strong> {emp.glucose ? `${emp.glucose} ммоль/л` : 'Н/Д'}</p>
+                            <p><strong>Холестерин:</strong> {emp.cholesterol ? `${emp.cholesterol} ммоль/л` : 'Н/Д'}</p>
+                          </div>
+                        </div>
+
+                        {emp.metricsHistory && emp.metricsHistory.length > 0 && (
+                          <div className="bg-green-50 p-4 rounded-lg">
+                            <h5 className="font-semibold mb-2">История показателей</h5>
+                            <div className="space-y-2">
+                              {emp.metricsHistory.slice(-3).map((metric, idx) => (
+                                <div key={idx} className="text-sm flex justify-between items-center">
+                                  <span className="font-medium">{metric.date}</span>
+                                  <div className="flex gap-4 text-xs">
+                                    <span>ИМТ: {metric.bmi || 'Н/Д'}</span>
+                                    <span>АД: {metric.bloodPressure || 'Н/Д'}</span>
+                                    <span>Глюкоза: {metric.glucose || 'Н/Д'}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Тип осмотра</Label>
+                            <Select defaultValue={inspectionType}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="preliminary">Предварительный</SelectItem>
+                                <SelectItem value="periodic">Периодический</SelectItem>
+                                <SelectItem value="indepth">Углубленный</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Дата осмотра</Label>
+                            <Input type="date" defaultValue={new Date().toISOString().split('T')[0]} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Заключение врача</Label>
+                          <Textarea placeholder="Введите заключение..." rows={3} />
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button className="flex-1">Сохранить осмотр</Button>
+                          <Button variant="outline" onClick={() => setIsInspectionDialogOpen(false)}>Отмена</Button>
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           <TabsContent value="calculators">
